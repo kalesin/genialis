@@ -11,13 +11,14 @@
               id="location-input"
               class="textInput"
               :class="{ 
-                'validation-error': submitFormValidation.location==='error',
+                'validation-error': !isRecordFormValid.location,
               }"
-              v-model="locationInput"
-              @focus="showAutocomplete"
-              v-click-outside="dismissAutocomplete"
+              autocomplete="off"
+              v-model="locationValue"
+              @focus="() => autocompleteFocused = true"
+              v-click-outside="() => autocompleteFocused = false"
             >
-            <p v-if="submitFormValidation.location==='error'" class="mt-2 text-sm text-red-600 dark:text-red-500">Please enter a location!</p>
+            <p v-if="!isRecordFormValid.location" class="mt-2 text-sm text-red-600 dark:text-red-500">Please enter a location!</p>
             <ul
               id="autocomplete"
               v-if="autocompleteFocused && searchLocations.length"
@@ -53,10 +54,11 @@
               placeholder="Select date"
               class="datePickerInput"
               :class="{
-                'validation-error': submitFormValidation.date==='error',
+                'validation-error': !isRecordFormValid.date,
               }"
+              autocomplete="off"
             >
-            <p v-if="submitFormValidation.date==='error'" class="mt-2 text-sm text-red-600 dark:text-red-500">Please select a date!</p>
+            <p v-if="!isRecordFormValid.date" class="mt-2 text-sm text-red-600 dark:text-red-500">Please select a date!</p>
           </div>
           <div>
             <label for="temperature-input" class="block my-2 text-sm font-medium text-gray-900 light:text-white">Temperature:</label>
@@ -65,26 +67,27 @@
               id="temperature-input"
               class="textInput"
               :class="{ 
-                'validation-error': submitFormValidation.temperature==='error',
+                'validation-error': !isRecordFormValid.temperature,
               }"
+              autocomplete="off"
             >
-            <p v-if="submitFormValidation.temperature==='error'" class="mt-2 text-sm text-red-600 dark:text-red-500">Please enter a temperature!</p>
+            <p v-if="!isRecordFormValid.temperature" class="mt-2 text-sm text-red-600 dark:text-red-500">Please enter a temperature!</p>
           </div>
           <button
-          v-if="disableSubmitButton"
-          disabled
-          type="submit"
-          class="submitButton mx-auto mt-4"
-        >
-          Submit
-        </button>
-        <button
-          v-else
-          type="submit"
-          class="submitButton mx-auto mt-4"
-        >
-          Submit
-        </button>
+            v-if="disableRecordButton"
+            disabled
+            type="submit"
+            class="submitButton mx-auto mt-4"
+          >
+            Submit
+          </button>
+          <button
+            v-else
+            type="submit"
+            class="submitButton mx-auto mt-4"
+          >
+            Submit
+          </button>
         </form>
       </div>
     </div>
@@ -107,12 +110,13 @@
             value="15/10/2019"
             class="datePickerInput"
             :class="{ 
-              'validation-error': rangeFormValidation.startTime==='error',
+              'validation-error': !isRangeFormValid.startTime,
             }"
             placeholder="Select date start"
+            autocomplete="off"
           >
           <p
-            v-if="rangeFormValidation.startTime==='error'"
+            v-if="!isRangeFormValid.startTime"
             class="absolute mt-2 text-sm text-red-600 dark:text-red-500"
           >
             Please enter a temperature!
@@ -128,19 +132,20 @@
             type="text"
             class="datePickerInput"
             :class="{
-              'validation-error': rangeFormValidation.endTime==='error',
+              'validation-error': !isRangeFormValid.endTime,
             }"
             placeholder="Select date end"
+            autocomplete="off"
           >
           <p
-            v-if="rangeFormValidation.endTime==='error'"
+            v-if="!isRangeFormValid.endTime"
             class="absolute mt-2 text-sm text-red-600 dark:text-red-500"
           >
             Please enter a temperature!
           </p>
         </div>
         <button
-          v-if="disableSubmitButton"
+          v-if="disableRecordButton"
           disabled
           type="submit"
           class="submitButton ml-4"
@@ -160,7 +165,7 @@
     <div class="averagesContainer">
       <div class="titleText">Statistics for selected date range:</div>
       <InfoBox
-        v-if="weatherRecordStatistics && !requestFailed"
+        v-if="weatherRecordStatistics && !requestFailed && !noRecordsFound"
         :weatherInfo="weatherRecordStatistics"
         :average="true"
         class="flex justify-center w-full"
@@ -184,13 +189,13 @@
       <div class="buttonContainer">
         <button
           class="submitButton ml-4"
-          @click="displayMoreRecords(true)"
+          @click="displayMoreRecords()"
         >
           Show More
         </button>
         <button
           class="submitButton ml-4"
-          @click="displayMoreRecords(false)"
+          @click="displayLessRecords()"
         >
           Show Less
         </button>
@@ -198,16 +203,16 @@
           class="submitButton ml-4"
           @click="toggleDisplayAllRecords"
         >
-        {{ displayAllRecords ?  'Hide All' : 'Show All' }}
+        {{ displayAllRecords ?  "Hide All" : "Show All" }}
         </button>
       </div>
       <div
         v-if="recordsInRange.length>0"
         class="mt-4"
-        v-html="numberOfRecordsToDisplayText"
       >
+        Showing <strong>{{ numberOfRecordsToDisplay }}</strong> out of <strong>{{ recordsInRange.length }}</strong> results
       </div>
-      <div v-if="recordsInRange.length > 0" class="elementContainer">
+      <div v-if="recordsInRange.length>0" class="elementContainer">
         <InfoBox
           v-for="(record, index) in recordsInRangeToDisplay"
           :key="index"
@@ -220,311 +225,247 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
-import { initFlowbite } from 'flowbite'
-import { mockApi } from '../api/mockApi.ts';
-import InfoBox from './InfoBox.vue';
+import { ref, computed, onMounted, watch } from "vue"
+import { initFlowbite } from "flowbite"
+import { mockApi } from "../api/mockApi.ts"
+import { getTimestampFromEuFormat, getEuFormatFromTimestamp, convertToKelvin } from "../utilities"
+import InfoBox from "./InfoBox.vue"
+
+const { autocompleteLocation, getTemperaturesDuring, saveTemperature } = mockApi()
+
+const isRecordFormValid = ref({
+  temperature: true,
+  location: true,
+  date: true
+})
+const isRangeFormValid = ref({
+  startTime: true,
+  endTime: true
+})
+const disableRecordButton = ref(false)
+const disableRangeButton = ref(false)
 
 onMounted(() => {
   //init tailwind components
-  initFlowbite();
+  initFlowbite()
   
-  const submitForm = document.getElementById('record-form');
+  document.getElementById("end-time").value = getEuFormatFromTimestamp(Date.now())
+
+  const submitForm = document.getElementById("record-form")
   submitForm.addEventListener("submit", async(e) => {
-    e.preventDefault();
-    disableSubmitButton.value = true;
-    const temperatureInput = document.getElementById("temperature-input").value;
-    const locationInput = document.getElementById("location-input").value;
-    const dateInput = document.getElementById("date-picker").value;
+    e.preventDefault()
+    disableRecordButton.value = true
 
-    if(temperatureInput == "") submitFormValidation.value.temperature = 'error';
-    else submitFormValidation.value.temperature = 'success';
-    if(locationInput == "") submitFormValidation.value.location = 'error';
-    else submitFormValidation.value.location = 'success';
-    if(dateInput == "") submitFormValidation.value.date = 'error';
-    else submitFormValidation.value.date = 'success';
-
-    console.log('submit', submitFormValidation, Object.keys(submitFormValidation.value));
+    const temperatureValue = document.getElementById("temperature-input").value
+    if(temperatureValue == "") isRecordFormValid.value.temperature = false
+    else isRecordFormValid.value.temperature = true
     
-    if(Object.values(submitFormValidation.value).every(value => value!=='error')) {
-      console.log('record', getTimestampFromEuFormat(dateInput), dateInput);
-      const location = locationInput;
-      const time = getTimestampFromEuFormat(dateInput);
-      const temperature = convertToKelvin(temperatureInput)
-      await saveTemperature(location, time, temperature);
+    const locationValue = document.getElementById("location-input").value
+    if(locationValue == "") isRecordFormValid.value.location = false
+    else isRecordFormValid.value.location = true
+    
+    const dateValue = document.getElementById("date-picker").value
+    if(dateValue == "") isRecordFormValid.value.date = false
+    else isRecordFormValid.value.date = true
+
+    if(Object.values(isRecordFormValid.value).every(x => x)) {
+      const time = getTimestampFromEuFormat(dateValue)
+      await saveTemperature(locationValue, time, convertToKelvin(parseInt(temperatureValue)))
       //updateRanges to include the added record
-      await updateRanges(time);
-      submitFormValidation.value = {
-        temperature: 'success',
-        location: 'success',
-        date: 'success'
-      };
+      await updateRanges(time)
     }
-    enableButtons();
-    
-  });
+    setTimeout(() => { disableRecordButton.value = false }, throttleTimeout)
+  })
 
-  document.getElementById("end-time").value = currentTime;
-  const rangeForm = document.getElementById('range-form');
+  const rangeForm = document.getElementById("range-form")
   rangeForm.addEventListener("submit", async(e) => {
-    e.preventDefault();
-    disableRangeButton.value = true;
-    const startTimeInput = document.getElementById("start-time").value;
-    const endTimeInput = document.getElementById("end-time").value;
-    if(startTimeInput == "") rangeFormValidation.value.startTime = 'error';
-    else rangeFormValidation.value.startTime = 'success';  
-    if(endTimeInput == "") rangeFormValidation.value.endTime = 'error';
-    else rangeFormValidation.value.endTime = 'success';
+    e.preventDefault()
+    disableRangeButton.value = true
 
-    if(Object.values(rangeFormValidation.value).every(value => value!=='error')) {
-      const startTime = getTimestampFromEuFormat(startTimeInput);
-      const endTime = getTimestampFromEuFormat(endTimeInput);
-      console.log(startTime, endTime);
-      console.log('submitted', Date.now());
-      await getRecordsInRange(startTime, endTime);
-      rangeFormValidation.value = {
-        startTime: 'success',
-        endTime: 'success'
-      };
+    const startTimeValue = document.getElementById("start-time").value
+    if(startTimeValue == "") isRangeFormValid.value.startTime = false
+    else isRangeFormValid.value.startTime = true  
+    
+    const endTimeValue = document.getElementById("end-time").value
+    if(endTimeValue == "") isRangeFormValid.value.endTime = false
+    else isRangeFormValid.value.endTime = true
+
+    if(Object.values(isRangeFormValid.value).every(x => x)) {
+      const startTime = getTimestampFromEuFormat(startTimeValue)
+      const endTime = getTimestampFromEuFormat(endTimeValue)
+      await getRecordsInRange(startTime, endTime)
     }
-    enableButtons();
-  });
-
+    setTimeout(() => { disableRangeButton.value = false }, throttleTimeout)
+  })
 })
 
+//displaying records
+const increment = 10
+const numberOfRecordsToDisplay = ref(increment)
+const displayAllRecords = ref(false)
 
+//request results
+const recordsInRange = ref([])
+const noRecordsFound = ref(false)
+const requestFailed = ref(false)
+const throttleTimeout = 1000
 
-const { autocompleteLocation, getTemperaturesDuring, saveTemperature } = mockApi();
-let submitFormValidation = ref({
-  temperature: 'success',
-  location: 'success',
-  date: 'success'
-});
-let rangeFormValidation = ref({
-  startTime: 'success',
-  endTime: 'success'
-});
-const currentTime = new Date().toJSON().slice(0,10).split('-').reverse().join('/');
-let recordsInRange = ref([])
-let numberOfRecordsToDisplay = ref(10);
-let displayAllRecords = ref(false);
+//autocomplete
+let locationValue = ref("")
+let searchLocations = ref([])
+let autocompleteFocused = ref(false)
 
-let numberOfRecordsToDisplayText = computed(() => {
-  return `Showing <strong>${numberOfRecordsToDisplay.value}</strong> out of <strong>${recordsInRange.value.length}</strong> results`;
-});
+function displayMoreRecords() {
+  numberOfRecordsToDisplay.value += increment
+  if(numberOfRecordsToDisplay.value>recordsInRange.value.length) numberOfRecordsToDisplay.value = recordsInRange.value.length
+}
 
-function displayMoreRecords(value) {
-  //number of displayed items to increment by
-  const increment = 10;
-  if(value) {
-    if(numberOfRecordsToDisplay.value<=recordsInRange.value.length-increment) numberOfRecordsToDisplay.value += increment;
-    else if(numberOfRecordsToDisplay.value>recordsInRange.value.length-increment) numberOfRecordsToDisplay.value = recordsInRange.value.length;
-  } else if(!value) {
-    if(numberOfRecordsToDisplay.value>=2*increment) numberOfRecordsToDisplay.value -= increment;
-    else if(numberOfRecordsToDisplay.value<2*increment) numberOfRecordsToDisplay.value = increment;
-  }
+function displayLessRecords() {
+  numberOfRecordsToDisplay.value -= increment
+  if(numberOfRecordsToDisplay.value<increment) numberOfRecordsToDisplay.value = increment
 }
 
 function toggleDisplayAllRecords() {
-  displayAllRecords.value = !displayAllRecords.value;
-  if(displayAllRecords.value===true) numberOfRecordsToDisplay.value = recordsInRange.value.length;
-  else numberOfRecordsToDisplay.value = 10;
+  displayAllRecords.value = !displayAllRecords.value
+  if(displayAllRecords.value===true) numberOfRecordsToDisplay.value = recordsInRange.value.length
+  else numberOfRecordsToDisplay.value = increment
 }
 
 let recordsInRangeToDisplay = computed(() => {
-  return recordsInRange.value.slice(0, numberOfRecordsToDisplay.value);
-});
+  return recordsInRange.value.slice(0, numberOfRecordsToDisplay.value)
+})
 
 let weatherRecordStatistics = computed(() => {
-  if(recordsInRange.value.length > 0) {
-    const averageTemperature = recordsInRange.value.reduce((accumulator, current) => accumulator + current.temperature, 0)/recordsInRange.value.length;
-    const daysAboveAverage = recordsInRange.value.filter(el => el.temperature>=averageTemperature).length;
-    const hotDayKelvinTemperature = 273+15;
-    const hotDays = recordsInRange.value.filter(el => el.temperature>=hotDayKelvinTemperature).length;
-    const coldDays = recordsInRange.value.filter(el => el.temperature<hotDayKelvinTemperature).length;
-    const modeOfTemperature = recordArray => {
-      let maxCounts = {};
-      recordArray.forEach((el) => {
-        if(maxCounts[el.temperature]) maxCounts[el.temperature]++;
-        else maxCounts[el.temperature] = 1;
-      });
-      console.log(maxCounts);
-      //convert to array and sort by count
-      const sortedCounts = Object.entries(maxCounts).sort(([key1, value1], [key2, value2]) => value2 - value1);
-      const [ mode, modeCount ] = sortedCounts[0];
-      console.log('mode, modeCount', mode, modeCount)
-      const allModes = sortedCounts.filter(([key, value]) => value===modeCount);
-      console.log('weatherRecordStatistics', allModes);
-      //if multiple values are the mode return the highest one
-      if(allModes.length>1) {
-        allModes.sort(([key1, value1], [key2, value2]) => key2 - key1);
-        return allModes[0][0];
-      } else return mode;
-    };
+  if(recordsInRange.value.length>0) {
+    const averageTemperature = recordsInRange.value.reduce((accumulator, current) => accumulator + current.temperature, 0)/recordsInRange.value.length
+    const daysAboveAverage = recordsInRange.value.filter(el => el.temperature>=averageTemperature).length
+    
+    const hotDayTemperature = convertToKelvin(15)
+    const hotDays = recordsInRange.value.filter(el => el.temperature>=hotDayTemperature).length
+    const coldDays = recordsInRange.value.filter(el => el.temperature<hotDayTemperature).length
+    
+    const maxCounts = {}
+    recordsInRange.value.forEach((el) => {
+      if(maxCounts[el.temperature]) maxCounts[el.temperature]++
+      else maxCounts[el.temperature] = 1
+    })
+    //convert to array and sort by count
+    const sortedCounts = Object.entries(maxCounts).sort(([key1, value1], [key2, value2]) => value2 - value1)
+    const [ mode, modeCount ] = sortedCounts[0]
+    const allModes = sortedCounts.filter(([key, value]) => value===modeCount)
+    const modeOfTemperature = allModes.length==1 ? mode : allModes.sort(([key1, value1], [key2, value2]) => key2 - key1)[0][0]
+    
     const result = {
       averageTemperature,
       daysAboveAverage,
-      modeOfTemperature: modeOfTemperature(recordsInRange.value),
       hotDays,
-      coldDays
-    };
-    console.log(result);
-    return result;
+      coldDays,
+      modeOfTemperature,
+    }
+    return result
   } else {
-    return null;
+    return null
   }
 })
 
-let noRecordsFound = ref(false);
-let requestFailed = ref(false);
-let disableSubmitButton = ref(false);
-let disableRangeButton = ref(false);
-let throttleTimeout = 1000;
-
-function enableButtons() {
-  setTimeout(() => { 
-    console.log('activated');
-    disableSubmitButton.value = false;
-    disableRangeButton.value = false;
-  }, throttleTimeout);
-}
-
 async function getRecordsInRange(startTime, endTime) {
   try {
-    const records = await getTemperaturesDuring(startTime, endTime);
-    requestFailed.value = false;
-    console.log(records);
+    const records = await getTemperaturesDuring(startTime, endTime)
+    requestFailed.value = false
     if(records.length>0) {
-      const sortByAscendingDate = records.sort((a, b) => b.time-a.time);
-      recordsInRange.value = sortByAscendingDate;
-      noRecordsFound.value = false;
+      const sortByDescendingDate = records.sort((a, b) => b.time-a.time)
+      recordsInRange.value = sortByDescendingDate
+      noRecordsFound.value = false
     } else {
-      noRecordsFound.value = true;
+      recordsInRange.value = []
+      noRecordsFound.value = true
     }
   } catch(e) {
-    console.log(e);
-    requestFailed.value = true;
-    noRecordsFound.value = false;
-    recordsInRange.value = [];
+    requestFailed.value = true
+    noRecordsFound.value = false
+    recordsInRange.value = []
   }
 }
 
 async function updateRanges(time) {
-  const startTimeInput = document.getElementById("start-time");
-  const endTimeInput = document.getElementById("end-time");
-  let startTimestamp = getTimestampFromEuFormat(startTimeInput.value);
-  let endTimestamp = getTimestampFromEuFormat(endTimeInput.value);
-  console.log('updateRanges', startTimestamp, endTimestamp, time)
-  if(time > endTimestamp) {
-    endTimeInput.value = getEuFormatFromTimestamp(time);
-    endTimestamp = time;
+  const endTimeInput = document.getElementById("end-time")
+  if(time>getTimestampFromEuFormat(endTimeInput.value)) {
+    endTimeInput.value = getEuFormatFromTimestamp(time)
   }
-  if(time < startTimestamp) {
-    startTimeInput.value = getEuFormatFromTimestamp(time);
-    startTimestamp = time;
+  
+  const startTimeInput = document.getElementById("start-time")
+  if(time<getTimestampFromEuFormat(startTimeInput.value)) {
+    startTimeInput.value = getEuFormatFromTimestamp(time)
   }
-  await getRecordsInRange(startTimestamp, endTimestamp);
-}
-
-function getTimestampFromEuFormat(date) { 
-  const dateArray = date.split('/');
-  const switched = [...dateArray.splice(1, 1), ...dateArray].join('/');
-  console.log('getTimestampFromEuFormat', new Date(switched));
-  return new Date(switched).getTime();
-};
-
-function getEuFormatFromTimestamp(timestamp) {
-  const date = new Date(timestamp);
-  let formatted = `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`
-  return formatted;
-};
-
-function convertToKelvin(celsius) {
-  return parseInt(celsius)+273;
-};
-
-//autocomplete
-let locationInput = ref("");
-let searchLocations = ref([]);
-let autocompleteFocused = ref(false);
-
-watch(locationInput, async (input) => {
-  if(searchLocations.value.includes(input)) return searchLocations.value = [];
-  if(input === '') return searchLocations.value = [];
-  const locations = await autocompleteLocation(input);
-  console.log('searchLocations', input, locations.length)
-  searchLocations.value = locations;
-  autocompleteFocused.value = true;
-})
-
-function dismissAutocomplete() {
-  console.log('dismissed');
-  autocompleteFocused.value = false;
-}
-
-function showAutocomplete() {
-  console.log('showed');
-  autocompleteFocused.value = true;
+  
+  await getRecordsInRange(getTimestampFromEuFormat(startTimeInput.value), getTimestampFromEuFormat(endTimeInput.value))
 }
 
 function selectLocation(value) {
-  locationInput.value = value;
-  autocompleteFocused.value = false;
+  locationValue.value = value
+  autocompleteFocused.value = false
 }
 
+watch(locationValue, async (input) => {
+  if(searchLocations.value.includes(input)) return autocompleteFocused.value = false
+  if(input === "") return searchLocations.value = []
+
+  const locations = await autocompleteLocation(input)
+  searchLocations.value = locations
+  autocompleteFocused.value = true
+})
 </script>
 
 <style scoped>
 .submitButton {
-  @apply cursor-pointer text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-orange-400 dark:hover:bg-orange-600 dark:focus:ring-blue-800;
+  @apply cursor-pointer text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-orange-400 dark:hover:bg-orange-600 dark:focus:ring-blue-800
 }
+
 .rangeFormContainer {
-  @apply m-6 mb-10 flex items-start justify-center;
+  @apply m-6 mb-10 flex items-start justify-center
 }
+
 .autocompleteItem {
-  @apply w-full m-0 p-2 text-gray-900 border border-gray-300 bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+  @apply w-full m-0 p-2 text-gray-900 border border-gray-300 bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
 }
+
 .textInput {
-  @apply block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+  @apply block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
 }
 
 .datePickerInput {
-  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+  @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
 }
 
 .validation-success {
- @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700 dark:bg-green-100 dark:border-green-400;
+ @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700 dark:bg-green-100 dark:border-green-400
 }
 
 .validation-error {
-  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700 dark:bg-red-100 dark:border-red-400;
+  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700 dark:bg-red-100 dark:border-red-400
 }
 
 .elementContainer {
-  @apply flex bg-main w-full flex-wrap h-auto items-start justify-center px-6 py-4;
+  @apply flex bg-main w-full flex-wrap h-auto items-start justify-center px-6 py-4
 }
 
 .averagesContainer {
-  @apply flex flex-col bg-main w-full items-center justify-center;
+  @apply flex flex-col bg-main w-full items-center justify-center
 }
 
 .recordsContainer {
-  @apply py-4 flex flex-col bg-main w-full items-center justify-center;
+  @apply py-4 flex flex-col bg-main w-full items-center justify-center
 }
 
 .titleText {
-  @apply capitalize text-center flex items-center text-xl m-4;
+  @apply capitalize text-center flex items-center text-xl m-4
 }
 
 .element {
-  @apply bg-main w-1/3 p-2 flex rounded-lg;
+  @apply bg-main w-1/3 p-2 flex rounded-lg
 }
 
 .formContainer {
-  @apply flex items-start h-auto mx-8 pb-8 flex-col;
-}
-
-.searchButton {
-  @apply px-4 bg-main opacity-60 text-white rounded shadow-md flex items-center;
+  @apply flex items-start h-auto mx-8 pb-8 flex-col
 }
 </style>

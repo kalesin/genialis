@@ -5,7 +5,7 @@
       <div v-if="average">
         <div class="flex justify-between">
           <div>Average temperature:</div>
-          <div class="capitalize font-bold">{{ formatTemperature(weatherInfo.averageTemperature) }}</div>
+          <div class="capitalize font-bold">{{ formatTemperatureToCelsius(weatherInfo.averageTemperature) }}</div>
         </div>
         <div class="text-center flex justify-between">
           <div>Days above average temperature:</div>
@@ -13,7 +13,7 @@
         </div>
         <div class="flex justify-between">
           <div>Mode of temperature:</div>
-          <div class="capitalize font-bold">{{ formatTemperature(weatherInfo.modeOfTemperature) }}</div>
+          <div class="capitalize font-bold">{{ formatTemperatureToCelsius(weatherInfo.modeOfTemperature) }}</div>
         </div>
         <div class="text-center flex justify-between">
           <div>Hot days(above 15 °C):</div>
@@ -36,7 +36,7 @@
         </div>
         <div class="flex justify-between">
           <div>Current temperature:</div>
-          <div class="capitalize font-bold">{{ formatTemperature(weatherInfo.temperature) }}</div>
+          <div class="capitalize font-bold">{{ formatTemperatureToCelsius(weatherInfo.temperature) }}</div>
         </div>
       </div>
 
@@ -45,26 +45,10 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted } from 'vue';
+import { getEuFormatFromTimestamp, formatTemperatureToCelsius } from "../utilities";
 
 defineProps({
   weatherInfo: Object,
   average: Boolean,
-});
-
-onMounted(() => {
-  nextTick(()=> {
-    console.log('component mounted', Date.now());
-  })
-});
-
-let formatTemperature = (temperature) => {
-  return `${Math.floor(temperature-273)} °C`;
-};
-
-function getEuFormatFromTimestamp(timestamp) {
-  const date = new Date(timestamp);
-  let formatted = `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear()}`
-  return formatted;
-};
+})
 </script>
