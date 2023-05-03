@@ -193,12 +193,10 @@ export function mockApi() {
 
   return {
       async autocompleteLocation(input: string) {
-        console.log(input);
           await networkDelay(Math.min(500 / input.length, 1000))
           return locations.filter((location) => location.startsWith(input))
       },
       async getTemperaturesDuring(startTime: number, endTime: number) {
-        console.log(arguments)
           await networkDelay(300)
           if (Math.random() < 0.01) throw new Error('mock failure');
           return storage.temperatureRecords.filter((record) => {
@@ -206,7 +204,6 @@ export function mockApi() {
           })
       },
       async saveTemperature(location: string, time: number, temperature: number) {
-        console.log(arguments)
           await networkDelay(100)
           storage.temperatureRecords.push({ location, time, temperature })
           return 'saved'
