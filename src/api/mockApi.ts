@@ -194,7 +194,7 @@ export function mockApi() {
   return {
       async autocompleteLocation(input: string) {
           await networkDelay(Math.min(500 / input.length, 1000))
-          return locations.filter((location) => location.startsWith(input))
+          return locations.filter((location) => location.toLowerCase().startsWith(input.toLowerCase()))
       },
       async getTemperaturesDuring(startTime: number, endTime: number) {
           await networkDelay(300)

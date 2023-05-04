@@ -27,7 +27,7 @@
             >
               <li class="font-bold autocompleteItem">
                 Showing {{ searchLocations.length }} results
-              </li>datePickerIconContainer
+              </li>
               <li
                 v-for="(location, index) in searchLocations"
                 :key="index"
@@ -466,7 +466,7 @@ watch(locationValue, async (input) => {
 }
 
 .validationError {
-  @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700 dark:bg-red-100 dark:border-red-400
+  @apply bg-red-50 dark:bg-red-200 border-red-500 text-red-600 dark:text-red-500 placeholder-red-600 dark:placeholder-red-500 dark:border-red-400
 }
 
 .validationErrorText {
@@ -482,7 +482,7 @@ watch(locationValue, async (input) => {
 }
 
 .statisticsInfoBoxContainer {
-  @apply flex justify-center w-full
+  @apply flex justify-center w-1/3
 }
 
 .resultsErrorText {
