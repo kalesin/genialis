@@ -1,32 +1,33 @@
 <template>
-  <div class="w-screen h-screen bg-gray-500 pt-4">
-    <div class="titleText flex justify-center w-full">Submit a temperature record:</div>
-    <div class="formContainer">
-      <div class="flex justify-center items-center w-full flex-col">
-        <form id="record-form" class="flex w-1/2 flex-col" action="">
-          <div>
-            <label for="location-input" class="block mb-2 text-sm font-medium text-gray-900 light:text-white">Location name:</label>
+  <div class="w-full h-full relative">
+    <div class="recordContainer">
+      <ThemeSwitch/>
+      <div class="titleText">Submit a temperature record:</div>
+      <div class="recordFormContainer">
+        <form id="record-form" class="recordForm" action="">
+          <div class="mb-8">
+            <label for="location-input" class="inputLabel">Location name:</label>
             <input 
               type="text"
               id="location-input"
               class="textInput"
               :class="{ 
-                'validation-error': !isRecordFormValid.location,
+                'validationError': !isRecordFormValid.location,
               }"
               autocomplete="off"
               v-model="locationValue"
               @focus="() => autocompleteFocused = true"
               v-click-outside="() => autocompleteFocused = false"
             >
-            <p v-if="!isRecordFormValid.location" class="mt-2 text-sm text-red-600 dark:text-red-500">Please enter a location!</p>
+            <p v-if="!isRecordFormValid.location" class="validationErrorText">Please enter a location!</p>
             <ul
               id="autocomplete"
               v-if="autocompleteFocused && searchLocations.length"
-              class="absolute z-10 m-1"
+              class="autocompleteContainer"
             >
               <li class="font-bold autocompleteItem">
                 Showing {{ searchLocations.length }} results
-              </li>
+              </li>datePickerIconContainer
               <li
                 v-for="(location, index) in searchLocations"
                 :key="index"
@@ -37,188 +38,193 @@
               </li>
             </ul>
           </div>
-          <label for="date-picker" class="block my-2 text-sm font-medium text-gray-900 light:text-white">Date:</label>
-          <div class="relative w-full">
-            <div class="absolute flex items-center w-6 h-6 inset-2 pointer-events-none">
-              <svg aria-hidden="true" class="w-full h-full text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
-              </svg>
+          <div class="mb-8">
+            <label for="date-picker" class="inputLabel">Date:</label>
+            <div class="relative w-full">
+              <div class="datePickerIconContainer">
+                <svg aria-hidden="true" class="datePickerIcon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path></svg>
+              </div>
+              <input
+                id="date-picker"
+                datepicker
+                datepicker-autohide
+                datepicker-buttons
+                datepicker-format="dd/mm/yyyy"
+                type="text"
+                placeholder="Select date"
+                class="datePickerInput"
+                :class="{
+                  'validationError': !isRecordFormValid.date,
+                }"
+                autocomplete="off"
+              >
+              <p v-if="!isRecordFormValid.date" class="validationErrorText">Please select a date!</p>
             </div>
-            <input
-              id="date-picker"
-              datepicker
-              datepicker-autohide
-              datepicker-buttons
-              datepicker-format="dd/mm/yyyy"
-              type="text"
-              placeholder="Select date"
-              class="datePickerInput"
-              :class="{
-                'validation-error': !isRecordFormValid.date,
-              }"
-              autocomplete="off"
-            >
-            <p v-if="!isRecordFormValid.date" class="mt-2 text-sm text-red-600 dark:text-red-500">Please select a date!</p>
           </div>
-          <div>
-            <label for="temperature-input" class="block my-2 text-sm font-medium text-gray-900 light:text-white">Temperature:</label>
+          <div class="mb-8">
+            <label for="temperature-input" class="inputLabel">Temperature:</label>
             <input
               type="text"
               id="temperature-input"
               class="textInput"
               :class="{ 
-                'validation-error': !isRecordFormValid.temperature,
+                'validationError': !isRecordFormValid.temperature,
               }"
               autocomplete="off"
             >
-            <p v-if="!isRecordFormValid.temperature" class="mt-2 text-sm text-red-600 dark:text-red-500">Please enter a temperature!</p>
+            <p v-if="!isRecordFormValid.temperature" class="validationErrorText">Please enter a temperature!</p>
           </div>
           <button
             v-if="disableRecordButton"
             disabled
             type="submit"
-            class="submitButton mx-auto mt-4"
+            class="submitButton mx-auto"
           >
             Submit
           </button>
           <button
             v-else
             type="submit"
-            class="submitButton mx-auto mt-4"
+            class="submitButton mx-auto"
           >
             Submit
           </button>
         </form>
       </div>
-    </div>
-    <div class="titleText flex justify-center w-full">Select a date range:</div>
-    <form id="range-form" class="rangeFormContainer" action="">
-      <div
-        date-rangepicker
-        datepicker-autohide
-        datepicker-buttons
-        datepicker-format="dd/mm/yyyy"
-        class="flex items-center"
-      >
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path></svg>
-          </div>
-          <input
-            id="start-time"
-            type="text"
-            value="15/10/2019"
-            class="datePickerInput"
-            :class="{ 
-              'validation-error': !isRangeFormValid.startTime,
-            }"
-            placeholder="Select date start"
-            autocomplete="off"
-          >
-          <p
-            v-if="!isRangeFormValid.startTime"
-            class="absolute mt-2 text-sm text-red-600 dark:text-red-500"
-          >
-            Please enter a temperature!
-          </p>
-        </div>
-        <span class="mx-4 text-gray-700">to</span>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <svg aria-hidden="true" class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path></svg>
-          </div>
-          <input
-            id="end-time"
-            type="text"
-            class="datePickerInput"
-            :class="{
-              'validation-error': !isRangeFormValid.endTime,
-            }"
-            placeholder="Select date end"
-            autocomplete="off"
-          >
-          <p
-            v-if="!isRangeFormValid.endTime"
-            class="absolute mt-2 text-sm text-red-600 dark:text-red-500"
-          >
-            Please enter a temperature!
-          </p>
-        </div>
-        <button
-          v-if="disableRecordButton"
-          disabled
-          type="submit"
-          class="submitButton ml-4"
-        >
-          Submit
-        </button>
-        <button
-          v-else
-          type="submit"
-          class="submitButton ml-4"
-        >
-          Submit
-        </button>
-      </div>
-    </form>
 
-    <div class="averagesContainer">
-      <div class="titleText">Statistics for selected date range:</div>
-      <InfoBox
-        v-if="weatherRecordStatistics && !requestFailed && !noRecordsFound"
-        :weatherInfo="weatherRecordStatistics"
-        :average="true"
-        class="flex justify-center w-full"
-      />
-      <p
-        v-if="requestFailed"
-        class="mt-2 text-medium text-red-600 dark:text-red-500 font-bold"
-      >
-        Something went wrong! Please retry.
-      </p>
-      <p
-        v-if="noRecordsFound"
-        class="mt-2 text-medium text-red-600 dark:text-red-500 font-bold"
-      >
-        No records found in selected range!
-      </p>
+      <div class="rangeContainer">
+        <div class="titleText">Select a date range:</div>
+        <form id="range-form" class="rangeForm" action="">
+          <div
+            date-rangepicker
+            datepicker-autohide
+            datepicker-buttons
+            datepicker-format="dd/mm/yyyy"
+            class="flex items-center"
+          >
+            <div class="relative">
+              <div class="datePickerIconContainer">
+                  <svg aria-hidden="true" class="datePickerIcon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path></svg>
+              </div>
+              <input
+                id="start-time"
+                type="text"
+                value="15/10/2019"
+                class="datePickerInput"
+                :class="{ 
+                  'validationError': !isRangeFormValid.startTime,
+                }"
+                placeholder="Select date start"
+                autocomplete="off"
+              >
+              <p
+                v-if="!isRangeFormValid.startTime"
+                class="absolute validationErrorText"
+              >
+                Please enter a temperature!
+              </p>
+            </div>
+            <span class="inputLabel my-2 mx-4">to</span>
+            <div class="relative">
+              <div class="datePickerIconContainer">
+                  <svg aria-hidden="true" class="datePickerIcon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path></svg>
+              </div>
+              <input
+                id="end-time"
+                type="text"
+                class="datePickerInput"
+                :class="{
+                  'validationError': !isRangeFormValid.endTime,
+                }"
+                placeholder="Select date end"
+                autocomplete="off"
+              >
+              <p
+                v-if="!isRangeFormValid.endTime"
+                class="absolute validationErrorText"
+              >
+                Please enter a temperature!
+              </p>
+            </div>
+            <button
+              v-if="disableRecordButton"
+              disabled
+              type="submit"
+              class="submitButton ml-6"
+            >
+              Submit
+            </button>
+            <button
+              v-else
+              type="submit"
+              class="submitButton ml-6"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-
-    <div class="recordsContainer">
-      <div class="titleText">Records for selected date range:</div>
-      <div class="buttonContainer">
-        <button
-          class="submitButton ml-4"
-          @click="displayMoreRecords()"
-        >
-          Show More
-        </button>
-        <button
-          class="submitButton ml-4"
-          @click="displayLessRecords()"
-        >
-          Show Less
-        </button>
-        <button
-          class="submitButton ml-4"
-          @click="toggleDisplayAllRecords"
-        >
-        {{ displayAllRecords ?  "Hide All" : "Show All" }}
-        </button>
-      </div>
-      <div
-        v-if="recordsInRange.length>0"
-        class="mt-4"
-      >
-        Showing <strong>{{ numberOfRecordsToDisplay }}</strong> out of <strong>{{ recordsInRange.length }}</strong> results
-      </div>
-      <div v-if="recordsInRange.length>0" class="elementContainer">
+    <div class="resultsContainer">
+      <div class="statisticsContainer">
+        <div class="titleText">Statistics for selected date range:</div>
         <InfoBox
-          v-for="(record, index) in recordsInRangeToDisplay"
-          :key="index"
-          :weatherInfo="record"
-          :average="false"
+          v-if="weatherRecordStatistics && !requestFailed && !noRecordsFound"
+          :weatherInfo="weatherRecordStatistics"
+          :is-average="true"
+          class="statisticsInfoBoxContainer"
         />
+        <p
+          v-if="requestFailed"
+          class="resultsErrorText"
+        >
+          Something went wrong! Please retry.
+        </p>
+        <p
+          v-if="noRecordsFound"
+          class="resultsErrorText"
+        >
+          No records found in selected range!
+        </p>
+      </div>
+  
+      <div class="recordsContainer">
+        <div class="titleText">Records for selected date range:</div>
+        <div class="buttonContainer">
+          <button
+            class="submitButton"
+            @click="displayMoreRecords()"
+          >
+            Show More
+          </button>
+          <button
+            class="submitButton ml-4"
+            @click="displayLessRecords()"
+          >
+            Show Less
+          </button>
+          <button
+            class="submitButton ml-4"
+            @click="toggleDisplayAllRecords"
+          >
+          {{ displayAllRecords ?  "Hide All" : "Show All" }}
+          </button>
+        </div>
+        <div
+          v-if="recordsInRange.length>0"
+          class="textLabel"
+        >
+          Showing <strong>{{ numberOfRecordsToDisplay }}</strong> out of <strong>{{ recordsInRange.length }}</strong> results
+        </div>
+        <div v-if="recordsInRange.length>0" class="elementContainer">
+          <InfoBox
+            v-for="(record, index) in recordsInRangeToDisplay"
+            :key="index"
+            :weatherInfo="record"
+            :is-average="false"
+            class="p-2"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -230,6 +236,7 @@ import { initFlowbite } from "flowbite"
 import { mockApi } from "../api/mockApi.ts"
 import { getTimestampFromEuFormat, getEuFormatFromTimestamp, convertToKelvin } from "../utilities"
 import InfoBox from "./InfoBox.vue"
+import ThemeSwitch from "./ThemeSwitch.vue"
 
 const { autocompleteLocation, getTemperaturesDuring, saveTemperature } = mockApi()
 
@@ -417,12 +424,25 @@ watch(locationValue, async (input) => {
 </script>
 
 <style scoped>
-.submitButton {
-  @apply cursor-pointer text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-orange-400 dark:hover:bg-orange-600 dark:focus:ring-blue-800
+
+.inputLabel {
+  @apply block text-sm font-medium text-gray-900 dark:text-white mb-2
 }
 
-.rangeFormContainer {
-  @apply m-6 mb-10 flex items-start justify-center
+.textLabel {
+  @apply block mt-8 mb-1 text-base font-medium text-gray-900 dark:text-white
+}
+
+.titleText {
+  @apply flex justify-center items-center w-full uppercase text-center text-xl mb-6 font-medium text-gray-900 dark:text-white
+}
+
+.submitButton {
+  @apply cursor-pointer text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800
+}
+
+.autocompleteContainer {
+  @apply absolute z-10 m-1
 }
 
 .autocompleteItem {
@@ -433,39 +453,66 @@ watch(locationValue, async (input) => {
   @apply block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
 }
 
+.datePickerIconContainer {
+  @apply absolute flex items-center w-6 h-6 inset-2 pointer-events-none
+}
+
+.datePickerIcon {
+  @apply w-full h-full text-gray-500 dark:text-gray-400
+}
+
 .datePickerInput {
   @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
 }
 
-.validation-success {
- @apply bg-green-50 border-green-500 text-green-900 placeholder-green-700 dark:bg-green-100 dark:border-green-400
-}
-
-.validation-error {
+.validationError {
   @apply bg-red-50 border-red-500 text-red-900 placeholder-red-700 dark:bg-red-100 dark:border-red-400
 }
 
-.elementContainer {
-  @apply flex bg-main w-full flex-wrap h-auto items-start justify-center px-6 py-4
+.validationErrorText {
+  @apply mt-2 text-sm text-red-600 dark:text-red-500
 }
 
-.averagesContainer {
-  @apply flex flex-col bg-main w-full items-center justify-center
+.resultsContainer {
+  @apply p-16 flex flex-col bg-blue-100 dark:bg-blue-900 w-full items-center justify-center
+}
+
+.statisticsContainer {
+  @apply flex flex-col w-full items-center justify-center
+}
+
+.statisticsInfoBoxContainer {
+  @apply flex justify-center w-full
+}
+
+.resultsErrorText {
+  @apply mt-2 text-base text-red-600 dark:text-red-500 font-bold
 }
 
 .recordsContainer {
-  @apply py-4 flex flex-col bg-main w-full items-center justify-center
+  @apply pt-16 flex flex-col w-full items-center justify-center
+}
+.elementContainer {
+  @apply flex w-full flex-wrap h-auto items-start justify-start
 }
 
-.titleText {
-  @apply capitalize text-center flex items-center text-xl m-4
+.recordContainer {
+  @apply p-16 w-full h-full bg-white dark:bg-gray-900
 }
 
-.element {
-  @apply bg-main w-1/3 p-2 flex rounded-lg
+.recordFormContainer {
+  @apply h-auto pb-8 flex justify-center items-center w-full flex-col
 }
 
-.formContainer {
-  @apply flex items-start h-auto mx-8 pb-8 flex-col
+.recordForm {
+  @apply flex w-1/2 flex-col
+}
+
+.rangeContainer {
+  @apply mt-8
+}
+
+.rangeForm {
+  @apply flex items-start justify-center
 }
 </style>

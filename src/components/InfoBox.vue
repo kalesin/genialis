@@ -1,45 +1,40 @@
 <template>
-  <div class="element">
-    <div class="bg-white flex rounded-lg w-full p-4 flex-col">
-
-      <div v-if="average">
-        <div class="flex justify-between">
-          <div>Average temperature:</div>
-          <div class="capitalize font-bold">{{ formatTemperatureToCelsius(weatherInfo.averageTemperature) }}</div>
-        </div>
-        <div class="text-center flex justify-between">
-          <div>Days above average temperature:</div>
-          <div>{{ weatherInfo.daysAboveAverage }}</div>
-        </div>
-        <div class="flex justify-between">
-          <div>Mode of temperature:</div>
-          <div class="capitalize font-bold">{{ formatTemperatureToCelsius(weatherInfo.modeOfTemperature) }}</div>
-        </div>
-        <div class="text-center flex justify-between">
-          <div>Hot days(above 15 °C):</div>
-          <div>{{ weatherInfo.hotDays }}</div>
-        </div>
-        <div class="text-center flex justify-between">
-          <div>Cold days:</div>
-          <div>{{ weatherInfo.coldDays }}</div>
-        </div>
+  <div class="elementWrapper">
+    <div v-if="isAverage" class="element">
+      <div class="textLine">
+        <div class="textNormal">Average temperature:</div>
+        <div class="textBold">{{ formatTemperatureToCelsius(weatherInfo.averageTemperature) }}</div>
       </div>
-
-      <div v-else>
-        <div class="flex justify-between">
-          <div>Location:</div>
-          <div class="capitalize font-bold">{{ weatherInfo.location }}</div>
-        </div>
-        <div class="text-center flex justify-between">
-          <div>Time:</div>
-          <div>{{ getEuFormatFromTimestamp(weatherInfo.time) }}</div>
-        </div>
-        <div class="flex justify-between">
-          <div>Current temperature:</div>
-          <div class="capitalize font-bold">{{ formatTemperatureToCelsius(weatherInfo.temperature) }}</div>
-        </div>
+      <div class="textLine">
+        <div class="textNormal">Days above average temperature:</div>
+        <div class="textNormal">{{ weatherInfo.daysAboveAverage }}</div>
       </div>
-
+      <div class="textLine">
+        <div class="textNormal">Mode of temperature:</div>
+        <div class="textBold">{{ formatTemperatureToCelsius(weatherInfo.modeOfTemperature) }}</div>
+      </div>
+      <div class="textLine">
+        <div class="textNormal">Hot days(above 15 °C):</div>
+        <div class="textNormal">{{ weatherInfo.hotDays }}</div>
+      </div>
+      <div class="textLine">
+        <div class="textNormal">Cold days:</div>
+        <div class="textNormal">{{ weatherInfo.coldDays }}</div>
+      </div>
+    </div>
+    <div v-else class="element">
+      <div class="textLine">
+        <div class="textNormal">Location:</div>
+        <div class="textBold capitalize">{{ weatherInfo.location }}</div>
+      </div>
+      <div class="textLine">
+        <div class="textNormal">Time:</div>
+        <div class="textNormal">{{ getEuFormatFromTimestamp(weatherInfo.time) }}</div>
+      </div>
+      <div class="textLine">
+        <div class="textNormal">Current temperature:</div>
+        <div class="textBold">{{ formatTemperatureToCelsius(weatherInfo.temperature) }}</div>
+      </div>
     </div>
   </div>
 </template>
@@ -49,6 +44,27 @@ import { getEuFormatFromTimestamp, formatTemperatureToCelsius } from "../utiliti
 
 defineProps({
   weatherInfo: Object,
-  average: Boolean,
+  isAverage: Boolean,
 })
 </script>
+
+<style scoped>
+  .elementWrapper {
+    @apply w-1/3 flex
+  }
+  .element {
+    @apply p-4 w-full flex bg-white dark:bg-gray-700 flex rounded-lg flex-col
+  }
+
+  .textLine {
+    @apply flex justify-between 
+  }
+
+  .textNormal {
+    @apply text-base font-normal text-gray-900 dark:text-white
+  }
+
+  .textBold {
+    @apply  text-base text-gray-900 dark:text-white font-bold
+  }
+</style>
